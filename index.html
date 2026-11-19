@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Class Planner</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#ecfeff 0%,#f0f9ff 100%);background-attachment:fixed;color:#1e293b}
+header{background:linear-gradient(135deg,#0d9488,#0284c7);color:white;padding:30px 16px;text-align:center;border-radius:0 0 28px 28px;box-shadow:0 6px 20px #0284c733}
+header h1{margin:0 0 8px}
+header p{margin:0;opacity:.9}
+main{max-width:850px;margin:auto;padding:16px}
+.card{background:white;padding:18px;margin-bottom:16px;border-radius:16px;box-shadow:0 4px 16px #0f766e14;border-top:3px solid #14b8a6}
+h2{margin-top:0;color:#0f766e}
+nav{display:flex;gap:8px;overflow:auto;margin-bottom:16px;padding:4px}
+nav button,.btn{border:0;border-radius:10px;padding:11px 14px;cursor:pointer;font-weight:bold;transition:transform .15s,box-shadow .15s}
+nav button:hover,.btn:hover{transform:translateY(-2px);box-shadow:0 4px 10px #0f766e26}
+nav button{background:white;color:#0f766e}
+nav button.active,.primary{background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:white}
+.secondary{background:#ccfbf1;color:#115e59}
+.danger{background:#ffe4e6;color:#be123c}
+form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.full{grid-column:1/-1}
+label{font-size:13px;font-weight:bold;color:#334155}
+input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;background:white}
+input:focus,select:focus{outline:2px solid #5eead4;border-color:#14b8a6}
+.list{display:grid;gap:10px;margin-top:15px}
+.item{border:1px solid #e2e8f0;border-left:4px solid #14b8a6;border-radius:12px;padding:13px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;background:#fcfffe;transition:transform .15s,box-shadow .15s}
+.item:hover{transform:translateY(-2px);box-shadow:0 4px 12px #0f766e1a}
+.item h3{margin:0 0 7px;color:#0f172a}
+.item p{margin:5px 0;color:#64748b;font-size:14px}
+.item.completed{border-left-color:#22c55e;opacity:.7}
+.item.completed h3{text-decoration:line-through}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.small{padding:7px 10px;font-size:12px}
+.muted{color:#64748b;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:white;border-radius:14px;padding:14px;text-align:center;box-shadow:0 4px 14px #0f766e12;border-bottom:3px solid #38bdf8}
+.stat strong{display:block;font-size:24px;color:#0d9488}
+.stat span{font-size:12px;color:#64748b}
+.empty{text-align:center;padding:20px;color:#94a3b8}
+.badge{display:inline-block;background:#e0f2fe;color:#0369a1;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:4px}
+.badge.high{background:#ffe4e6;color:#be123c}
+.badge.medium{background:#fef3c7;color:#b45309}
+.badge.low{background:#dcfce7;color:#15803d}
+.progress{height:10px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin-top:8px}
+.progress div{height:100%;width:0;background:linear-gradient(90deg,#14b8a6,#0ea5e9);transition:width .4s}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hidden{display:none!important}
+footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
+@media(max-width:550px){
+ form{grid-template-columns:1fr}
+ .full{grid-column:auto}
+ .item{flex-direction:column}
+ .stats{gap:6px}
+ .stat{padding:10px 4px}
+ .stat strong{font-size:20px}
+ .stat span{font-size:10px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>📚 Student Class Planner</h1>
+<p>🎓 Manage your classes, assignments and reminders</p>
+</header>
+
+<main>
+<div class="card">
+<h2>Hello, Student! 👋</h2>
+<p id="today" class="muted"></p>
+<p class="muted" id="progressText">📊 Assignment progress: 0%</p>
+<div class="progress"><div id="progressBar"></div></div>
+<div class="tools" style="margin-top:14px">
+<button class="btn secondary small" type="button" onclick="exportData()">⬇️ Export Backup</button>
+<button class="btn secondary small" type="button" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
+<input type="file" id="importFile" accept=".json" class="hidden">
+</div>
+</div>
+
+<div class="stats">
+<div class="stat"><strong id="classCount">0</strong><span>🏫 Classes Today</span></div>
+<div class="stat"><strong id="taskCount">0</strong><span>✏️ Pending Tasks</span></div>
+<div class="stat"><strong id="reminderCount">0</strong><span>⏰ Reminders</span></div>
+</div>
+
+<nav>
+<button class="active" onclick="showTab('schedule',this)">📅 Schedule</button>
+<button onclick="showTab('assignments',this)">📝 Assignments</button>
+<button onclick="showTab('reminders',this)">🔔 Reminders</button>
+</nav>
+
+<section id="schedule" class="card">
+<h2>🗓️ Class Schedule</h2>
+<form id="classForm">
+<input type="hidden" id="classId">
+<div class="field">
+<label for="subject">📖 Subject</label>
+<input id="subject" required placeholder="e.g. Mathematics">
+</div>
+<div class="field">
+<label for="day">📆 Day</label>
+<select id="day" required>
+<option value="">Select day</option>
+<option>Monday</option><option>Tuesday</option>
+<option>Wednesday</option><option>Thursday</option>
+<option>Friday</option><option>Saturday</option><option>Sunday</option>
+</select>
+</div>
+<div class="field">
+<label for="start">🕘 Start Time</label>
+<input id="start" type="time" required>
+</div>
+<div class="field">
+<label for="end">🕔 End Time</label>
+<input id="end" type="time" required>
+</div>
+<div class="field">
+<label for="room">📍 Room / Location</label>
+<input id="room" placeholder="e.g. Room 203">
+</div>
+<div class="field">
+<label for="color">🎨 Color Tag</label>
+<input id="color" type="color" value="#14b8a6">
+</div>
+<div class="field full actions">
+<button class="btn primary" id="classSubmit">Add Class</button>
+<button class="btn secondary hidden" type="button" id="cancelClass" onclick="resetClass()">Cancel</button>
+</div>
+</form>
+
+<hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
+<div class="field">
+<label for="classSearch">🔎 Search Classes</label>
+<input id="classSearch" placeholder="Search subject or room" oninput="renderClasses()">
+</div>
+<div class="field" style="margin-top:12px">
+<label for="dayFilter">🔍 Filter by Day</label>
+<select id="dayFilter" onchange="renderClasses()">
+<option value="All">All Days</option>
+<option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+<option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+</select>
+</div>
+<div id="classList" class="list"></div>
+</section>
+
+<section id="assignments" class="card hidden">
+<h2>📝 Assignments & Deadlines</h2>
+<form id="taskForm">
+<input type="hidden" id="taskId">
+<div class="field full">
+<label for="title">✏️ Assignment Title</label>
+<input id="title" required placeholder="e.g. Science project">
+</div>
+<div class="field">
+<label for="taskSubject">📘 Subject</label>
+<input id="taskSubject" required placeholder="e.g. Science">
+</div>
+<div class="field">
+<label for="priority">🚩 Priority</label>
+<select id="priority">
+<option value="high">High</option>
+<option value="medium" selected>Medium</option>
+<option value="low">Low</option>
+</select>
+</div>
+<div class="field">
+<label for="dueDate">📅 Deadline Date</label>
+<input id="dueDate" type="date" required>
+</div>
+<div class="field">
+<label for="dueTime">⏳ Deadline Time</label>
+<input id="dueTime" type="time" required>
+</div>
+<div class="field full actions">
+<button class="btn primary" id="taskSubmit">Add Assignment</button>
+<button class="btn secondary hidden" type="button" id="cancelTask" onclick="resetTask()">Cancel</button>
+</div>
+</form>
+<hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
+<div class="field">
+<label for="taskSearch">🔎 Search Assignments</label>
+<input id="taskSearch" placeholder="Search title or subject" oninput="renderTasks()">
+</div>
+<div class="field" style="margin-top:12px">
+<label for="taskFilter">🔍 Show Assignments</label>
+<select id="taskFilter" onchange="renderTasks()">
+<option value="all">All Assignments</option>
+<option value="pending">Pending</option>
+<option value="completed">Completed</option>
+</select>
+</div>
+<div class="actions" style="margin-top:12px">
+<button class="btn danger small" type="button" onclick="clearCompleted()">🧹 Clear Completed</button>
+</div>
+<div id="taskList" class="list"></div>
+</section>
+
+<section id="reminders" class="card hidden">
+<h2>🔔 In-App Reminders</h2>
+<p class="muted">Reminders are checked automatically every minute while this page is open.</p>
+<button class="btn primary" onclick="checkReminders(true)">🔄 Check Now</button>
+<div id="upcoming" class="list"></div>
+<h3>📬 Recent Notifications</h3>
+<div id="noticeList" class="list"></div>
+<button class="btn secondary" onclick="clearNotices()">🗑️ Clear Notifications</button>
+</section>
+</main>
+<footer>💾 Your schedule is saved in this browser using local storage.</footer>
+
+<script>
+const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const keys={
+ classes:"student_planner_classes",
+ tasks:"student_planner_tasks",
+ notices:"student_planner_notices",
+ shown:"student_planner_shown"
+};
+function load(key,fallback){
+ try{return JSON.parse(localStorage.getItem(key))??fallback}
+ catch{return fallback}
+}
+let classes=load(keys.classes,[]);
+let tasks=load(keys.tasks,[]);
+let notices=load(keys.notices,[]);
+let shown=load(keys.shown,{});
+
+function save(){
+ try{
+  localStorage.setItem(keys.classes,JSON.stringify(classes));
+  localStorage.setItem(keys.tasks,JSON.stringify(tasks));
+  localStorage.setItem(keys.notices,JSON.stringify(notices));
+  localStorage.setItem(keys.shown,JSON.stringify(shown));
+ }catch(e){alert("Unable to save. Check your browser storage settings.")}
+}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function safe(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))
+}
+function fmtTime(t){
+ if(!t)return "";
+ let [h,m]=t.split(":").map(Number);
+ let d=new Date();d.setHours(h,m,0,0);
+ return d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+}
+function fmtDate(s){
+ if(!s)return "";
+ return new Date(s+"T12:00:00").toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});
+}
+function showTab(name,button){
+ document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+ document.getElementById(name).classList.remove("hidden");
+ document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+ if(button)button.classList.add("active");
+ else document.querySelectorAll("nav button").forEach(b=>{
+  if(b.getAttribute("onclick").includes("'"+name+"'"))b.classList.add("active");
+ });
+ if(name==="reminders")renderReminders();
+}
+document.getElementById("today").textContent=new Date().toLocaleDateString([],{
+ weekday:"long",year:"numeric",month:"long",day:"numeric"
+});
+
+document.getElementById("classForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const edit=document.getElementById("classId").value;
+ const item={
+  id:edit||id(),
+  subject:document.getElementById("subject").value.trim(),
+  day:document.getElementById("day").value,
+  start:document.getElementById("start").value,
+  end:document.getElementById("end").value,
+  room:document.getElementById("room").value.trim(),
+  color:document.getElementById("color").value
+ };
+ if(item.end<=item.start){alert("End time must be later than start time.");return}
+ if(edit)classes=classes.map(c=>c.id===edit?item:c);
+ else classes.push(item);
+ save();resetClass();renderAll();
+});
+function resetClass(){
+ document.getElementById("classForm").reset();
+ document.getElementById("classId").value="";
+ document.getElementById("classSubmit").textContent="Add Class";
+ document.getElementById("cancelClass").classList.add("hidden");
+}
+function editClass(i){
+ const c=classes.find(x=>x.id===i);if(!c)return;
+ document.getElementById("classId").value=c.id;
+ document.getElementById("subject").value=c.subject;
+ document.getElementById("day").value=c.day;
+ document.getElementById("start").value=c.start;
+ document.getElementById("end").value=c.end;
+ document.getElementById("room").value=c.room;
+ document.getElementById("color").value=c.color||"#14b8a6";
+ document.getElementById("classSubmit").textContent="Save Changes";
+ document.getElementById("cancelClass").classList.remove("hidden");
+ showTab("schedule");
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function deleteClass(i){
+ if(!confirm("Delete this class?"))return;
+ classes=classes.filter(c=>c.id!==i);save();renderAll();
+}
+function renderClasses(){
+ let filter=document.getElementById("dayFilter").value;
+ let q=document.getElementById("classSearch").value.trim().toLowerCase();
+ let order=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+ let list=classes.filter(c=>(filter==="All"||c.day===filter)&&(!q||(c.subject+" "+(c.room||"")).toLowerCase().includes(q)))
+  .sort((a,b)=>order.indexOf(a.day)-order.indexOf(b.day)||a.start.localeCompare(b.start));
+ document.getElementById("classList").innerHTML=list.length?list.map(c=>`
+ <article class="item" style="border-left-color:${safe(c.color||"#14b8a6")}"><div>
+ <h3>📖 ${safe(c.subject)}</h3>
+ <p>📅 ${safe(c.day)}</p>
+ <p>🕒 ${safe(fmtTime(c.start))} – ${safe(fmtTime(c.end))}</p>
+ <p>📍 ${safe(c.room||"Room not specified")}</p>
+ </div><div class="actions">
+ <button class="btn secondary small" onclick="editClass('${c.id}')">✏️ Edit</button>
+ <button class="btn danger small" onclick="deleteClass('${c.id}')">🗑️ Delete</button>
+ </div></article>`).join(""):'<div class="empty">📭 No classes found. Add a class above!</div>';
+}
+
+document.getElementById("taskForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const edit=document.getElementById("taskId").value;
+ const old=tasks.find(t=>t.id===edit);
+ const item={
+  id:edit||id(),
+  title:document.getElementById("title").value.trim(),
+  subject:document.getElementById("taskSubject").value.trim(),
+  date:document.getElementById("dueDate").value,
+  time:document.getElementById("dueTime").value,
+  priority:document.getElementById("priority").value,
+  completed:old?old.completed:false
+ };
+ if(edit)tasks=tasks.map(t=>t.id===edit?item:t);
+ else tasks.push(item);
+ save();resetTask();renderAll();checkReminders();
+});
+function resetTask(){
+ document.getElementById("taskForm").reset();
+ document.getElementById("taskId").value="";
+ document.getElementById("taskSubmit").textContent="Add Assignment";
+ document.getElementById("cancelTask").classList.add("hidden");
+}
+function editTask(i){
+ const t=tasks.find(x=>x.id===i);if(!t)return;
+ document.getElementById("taskId").value=t.id;
+ document.getElementById("title").value=t.title;
+ document.getElementById("taskSubject").value=t.subject;
+ document.getElementById("dueDate").value=t.date;
+ document.getElementById("dueTime").value=t.time;
+ document.getElementById("priority").value=t.priority||"medium";
+ document.getElementById("taskSubmit").textContent="Save Changes";
+ document.getElementById("cancelTask").classList.remove("hidden");
+ showTab("assignments");window.scrollTo({top:0,behavior:"smooth"});
+}
+function toggleTask(i){
+ tasks=tasks.map(t=>t.id===i?{...t,completed:!t.completed}:t);
+ save();renderAll();
+}
+function deleteTask(i){
+ if(!confirm("Delete this assignment?"))return;
+ tasks=tasks.filter(t=>t.id!==i);save();renderAll();
+}
+function clearCompleted(){
+ if(!tasks.some(t=>t.completed)){alert("No completed assignments to clear.");return}
+ if(!confirm("Remove all completed assignments?"))return;
+ tasks=tasks.filter(t=>!t.completed);save();renderAll();
+}
+function renderTasks(){
+ const filter=document.getElementById("taskFilter").value;
+ const q=document.getElementById("taskSearch").value.trim().toLowerCase();
+ const now=new Date();
+ const list=tasks.filter(t=>filter==="all"||(filter==="pending"&&!t.completed)||(filter==="completed"&&t.completed))
+ .filter(t=>!q||(t.title+" "+t.subject).toLowerCase().includes(q))
+ .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ const pl={high:"🔴 High",medium:"🟡 Medium",low:"🟢 Low"};
+ document.getElementById("taskList").innerHTML=list.length?list.map(t=>{
+  const overdue=!t.completed&&new Date(t.date+"T"+t.time)<now;
+  const p=t.priority||"medium";
+  return `<article class="item ${t.completed?"completed":""}">
+  <div><h3>📝 ${safe(t.title)}</h3><p>📘 ${safe(t.subject)}</p>
+  <p>📅 ${safe(fmtDate(t.date))} at ${safe(fmtTime(t.time))}</p>
+  <span class="badge">${t.completed?"✅ Completed":overdue?"⚠️ Overdue":"⏳ Pending"}</span><span class="badge ${safe(p)}">${pl[p]||pl.medium}</span></div>
+  <div class="actions">
+  <button class="btn secondary small" onclick="toggleTask('${t.id}')">${t.completed?"↩️ Undo":"✅ Complete"}</button>
+  <button class="btn secondary small" onclick="editTask('${t.id}')">✏️ Edit</button>
+  <button class="btn danger small" onclick="deleteTask('${t.id}')">🗑️ Delete</button>
+  </div></article>`;
+ }).join(""):'<div class="empty">📭 No assignments to display.</div>';
+}
+
+function nextClass(c,now){
+ let diff=(days.indexOf(c.day)-now.getDay()+7)%7;
+ let d=new Date(now);d.setDate(d.getDate()+diff);
+ const [h,m]=c.start.split(":").map(Number);d.setHours(h,m,0,0);
+ if(d<=now)d.setDate(d.getDate()+7);
+ return d;
+}
+function checkReminders(manual=false){
+ const now=new Date();let found=0;
+ classes.forEach(c=>{
+  const start=nextClass(c,now);
+  const mins=Math.round((start-now)/60000);
+  if(mins>0&&mins<=15){
+   const key="class-"+c.id+"-"+start.toDateString();
+   if(!shown[key]){
+    shown[key]=true;found++;
+    notices.unshift({title:"Upcoming class: "+c.subject,
+     detail:"Starts in "+mins+" minute(s) · "+c.day+" at "+fmtTime(c.start),
+     time:now.toLocaleString(),key});
+   }
+  }
+ });
+ tasks.filter(t=>!t.completed).forEach(t=>{
+  const deadline=new Date(t.date+"T"+t.time);
+  const hours=(deadline-now)/3600000;
+  if(hours<=24){
+   const key=(hours<=0?"overdue-":"task-")+t.id;
+   if(!shown[key]){
+    shown[key]=true;found++;
+    notices.unshift({title:(hours<=0?"Overdue: ":"Deadline soon: ")+t.title,
+     detail:"Due "+fmtDate(t.date)+" at "+fmtTime(t.time),
+     time:now.toLocaleString(),key});
+   }
+  }
+ });
+ notices=notices.slice(0,50);save();renderAll();
+ if(manual&&found===0)alert("No new reminders right now.");
+}
+function renderReminders(){
+ const now=new Date();let upcoming=[];
+ classes.forEach(c=>{
+  const d=nextClass(c,now);
+  upcoming.push({date:d,title:c.subject,detail:c.day+" · "+fmtTime(c.start),label:"Next class"});
+ });
+ tasks.filter(t=>!t.completed).forEach(t=>{
+  const d=new Date(t.date+"T"+t.time);
+  upcoming.push({date:d,title:t.title,detail:t.subject+" · Due "+fmtDate(t.date)+" at "+fmtTime(t.time),
+   label:d<now?"Overdue":d-now<=86400000?"Due soon":"Assignment"});
+ });
+ upcoming.sort((a,b)=>a.date-b.date);
+ document.getElementById("upcoming").innerHTML=upcoming.length?upcoming.slice(0,15).map(x=>`
+ <div class="item"><div><h3>⏰ ${safe(x.title)}</h3><p>${safe(x.detail)}</p></div><span class="badge">${safe(x.label)}</span></div>`
+ ).join(""):'<div class="empty">📭 Nothing scheduled yet.</div>';
+ document.getElementById("noticeList").innerHTML=notices.length?notices.slice(0,10).map(n=>`
+ <div class="item"><div><h3>🔔 ${safe(n.title)}</h3><p>${safe(n.detail)}</p><p>${safe(n.time)}</p></div></div>`
+ ).join(""):'<div class="empty">🔕 No notifications yet. Keep the app open to check reminders.</div>';
+}
+function clearNotices(){
+ if(!confirm("Clear recent notifications?"))return;
+ notices=[];save();renderReminders();
+}
+function exportData(){
+ const blob=new Blob([JSON.stringify({classes,tasks},null,2)],{type:"application/json"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="student-planner-backup.json";
+ a.click();
+ URL.revokeObjectURL(a.href);
+}
+document.getElementById("importFile").addEventListener("change",e=>{
+ const file=e.target.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const data=JSON.parse(reader.result);
+   if(!Array.isArray(data.classes)||!Array.isArray(data.tasks))throw new Error();
+   if(!confirm("Replace your current data with this backup?"))return;
+   classes=data.classes;tasks=data.tasks;
+   save();renderAll();checkReminders();
+  }catch{alert("Invalid backup file.")}
+ };
+ reader.readAsText(file);
+ e.target.value="";
+});
+function renderAll(){
+ renderClasses();renderTasks();renderReminders();
+ document.getElementById("classCount").textContent=classes.filter(c=>c.day===days[new Date().getDay()]).length;
+ document.getElementById("taskCount").textContent=tasks.filter(t=>!t.completed).length;
+ document.getElementById("reminderCount").textContent=notices.length;
+ const done=tasks.filter(t=>t.completed).length;
+ const pct=tasks.length?Math.round(done/tasks.length*100):0;
+ document.getElementById("progressBar").style.width=pct+"%";
+ document.getElementById("progressText").textContent="📊 Assignment progress: "+pct+"% ("+done+"/"+tasks.length+" done)";
+}
+renderAll();
+checkReminders();
+setInterval(()=>{checkReminders();},60000);
+</script>
+</body>
+</html>
